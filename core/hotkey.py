@@ -9,10 +9,12 @@ class HotkeyListener(QObject):
 
     1. Hold Ctrl+Option: press-and-hold recording
     2. Double-tap Ctrl: hands-free mode (tap Ctrl again to stop)
+    3. Double-tap Right Command (⌘): read clipboard aloud (tap again to stop)
     """
 
     pressed = pyqtSignal()
     released = pyqtSignal()
+    speak_toggle = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -26,6 +28,8 @@ class HotkeyListener(QObject):
         self._last_ctrl_release = 0.0
         self._last_ctrl_press = 0.0
         self._ctrl_tap_count = 0
+        self._last_cmd_press = 0.0
+        self._cmd_tap_count = 0
 
     def start(self):
         self._listener = keyboard.Listener(
@@ -44,6 +48,22 @@ class HotkeyListener(QObject):
         is_ctrl = key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r)
         is_alt = key in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r,
                          keyboard.Key.alt_gr)
+        is_cmd_r = (key == keyboard.Key.cmd_r)
+
+        # Double-tap Right Command → read clipboard aloud.
+        # Any other key press resets the counter, so Cmd+key combos don't trigger it.
+        if is_cmd_r and not self._recording:
+            now = time.time()
+            if now - self._last_cmd_press < DOUBLE_TAP_INTERVAL:
+                self._cmd_tap_count += 1
+            else:
+                self._cmd_tap_count = 1
+            self._last_cmd_press = now
+            if self._cmd_tap_count >= 2:
+                self._cmd_tap_count = 0
+                self.speak_toggle.emit()
+        elif not is_cmd_r:
+            self._cmd_tap_count = 0
 
         if is_ctrl:
             self._ctrl_held = True
@@ -51,6 +71,8 @@ class HotkeyListener(QObject):
 
             # Hands-free: if recording, single Ctrl press stops it
             if self._hands_free and self._recording:
+                from core.clipboard import trace
+                trace("tecla Ctrl (pynput)")
                 self._hands_free = False
                 self._recording = False
                 self.released.emit()

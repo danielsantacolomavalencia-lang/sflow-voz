@@ -26,6 +26,15 @@ sounddevice_datas = collect_data_files('_sounddevice_data')
 # --- Collect pynput backends ---
 pynput_hidden = collect_submodules('pynput')
 
+# --- STT local: mlx (con sus librerías Metal), mlx_whisper (assets .tiktoken),
+# tiktoken (+ plugins), huggingface_hub (resuelve la caché del modelo) ---
+mlx_datas, mlx_binaries, mlx_hidden = [], [], []
+for pkg in ['mlx', 'mlx_whisper', 'tiktoken', 'tiktoken_ext', 'huggingface_hub', 'tqdm', 'regex']:
+    d, b, h = collect_all(pkg)
+    mlx_datas += d
+    mlx_binaries += b
+    mlx_hidden += h
+
 # --- Data files ---
 datas = [
     ('logo_small.png', '.'),
@@ -33,11 +42,12 @@ datas = [
 ]
 datas += sounddevice_datas
 datas += pyobjc_datas
+datas += mlx_datas
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=pyobjc_binaries,
+    binaries=pyobjc_binaries + mlx_binaries,
     datas=datas,
     hiddenimports=[
         # PyObjC
@@ -72,14 +82,22 @@ a = Analysis(
         'numpy',
         # dotenv
         'dotenv',
+        # STT local
+        *mlx_hidden,
+        'mlx.core',
+        'mlx.nn',
+        'mlx_whisper',
+        'tiktoken_ext.openai_public',
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['hooks/rthook_sin_torch.py'],
     excludes=[
         'tkinter',
         'unittest',
         'test',
+        # mlx-whisper los importa pero no los usa en nuestro camino (ver hooks/):
+        'torch', 'numba', 'llvmlite', 'scipy',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -131,8 +149,12 @@ app = BUNDLE(
             'SFlow usa AppleScript para pegar texto en otras aplicaciones.',
         'CFBundleDisplayName': 'SFlow',
         'CFBundleName': 'SFlow',
-        'CFBundleVersion': '1.0.0',
-        'CFBundleShortVersionString': '1.0.0',
+        'CFBundleVersion': '2.1.0',
+        'CFBundleShortVersionString': '2.1.0',
+        'LSMinimumSystemVersion': '13.0',
+        # Sin App Nap: una app de barra "dormida" retrasa sus temporizadores
+        # y el dictado se siente lento (ver _sin_app_nap en main.py).
+        'NSAppSleepDisabled': True,
         'LSApplicationCategoryType': 'public.app-category.productivity',
         'NSHighResolutionCapable': True,
     },

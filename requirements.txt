@@ -6,3 +6,9 @@ groq>=0.4.0
 python-dotenv>=1.0.0
 flask>=3.0.0
 pyobjc-framework-Cocoa>=10.0
+
+# --- Transcripción local (Apple Silicon / MLX) ---
+# Mismo modelo que Groq (whisper-large-v3-turbo) corriendo en tu Mac. Opcional:
+# si no importa (Intel, o no instalado) el router cae a Groq. Primera vez
+# descarga ~1.6 GB a ~/.cache/huggingface. Trae torch/scipy/numba como dependencias.
+mlx-whisper>=0.4.0

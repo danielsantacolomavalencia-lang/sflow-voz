@@ -1,6 +1,7 @@
+import itertools
 import socket
 import threading
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 from db.database import TranscriptionDB
 from config import DB_PATH
 
@@ -158,6 +159,53 @@ HTML_TEMPLATE = """
 @app.route("/")
 def index():
     return render_template_string(HTML_TEMPLATE)
+
+
+# ── /voz: Claude Code le pide a SFlow que diga algo en voz alta (28-sep) ─────
+# Lo usa el gancho claude_hooks/voz.py al terminar una respuesta con bloque 🔊.
+# Solo acepta JSON con la llave de APP_DATA_DIR/voz.json: una página web no puede
+# mandar ni el encabezado ni el JSON sin pasar por CORS, que aquí no se abre.
+# Cada frase lleva un número; SFlow cuenta hasta cuál ya terminó de decir. El gancho
+# del modo demo usa GET /voz/estado para esperar a Dora antes de la acción en pantalla.
+_voz = {"decir": None, "estado": None, "token": None, "ultimo": 0}
+_ids = itertools.count(1)
+_ids_lock = threading.Lock()
+
+
+def registrar_voz(decir, estado, token: str):
+    """SFlowApp registra su señal decir(id, texto), un estado() -> dict y la llave de esta sesión."""
+    _voz["decir"], _voz["estado"], _voz["token"] = decir, estado, token
+
+
+def _llave_ok() -> bool:
+    return bool(_voz["token"]) and request.headers.get("X-SFlow-Token") == _voz["token"]
+
+
+@app.route("/voz", methods=["POST"])
+def voz():
+    if _voz["decir"] is None:
+        return jsonify(ok=False, error="SFlow aún no está listo"), 503
+    if not _llave_ok():
+        return jsonify(ok=False, error="llave inválida"), 403
+    data = request.get_json(silent=True) or {}
+    texto = str(data.get("texto", "")).strip()[:3000]
+    if not texto:
+        return jsonify(ok=False, error="sin texto"), 400
+    with _ids_lock:
+        vid = next(_ids)
+        _voz["ultimo"] = vid
+    _voz["decir"](vid, texto)
+    return jsonify(ok=True, id=vid)
+
+
+@app.route("/voz/estado", methods=["GET"])
+def voz_estado():
+    """{"terminado": n, "ultimo": m}: SFlow ya terminó (o descartó) las frases 1..n."""
+    if _voz["estado"] is None:
+        return jsonify(ok=False, error="SFlow aún no está listo"), 503
+    if not _llave_ok():
+        return jsonify(ok=False, error="llave inválida"), 403
+    return jsonify(ok=True, ultimo=_voz["ultimo"], **_voz["estado"]())
 
 
 @app.route("/api/transcriptions")
