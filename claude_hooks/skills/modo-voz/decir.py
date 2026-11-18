@@ -27,6 +27,12 @@ except Exception as e:  # SFlow cerrada, sin instalar.py o sin configuración
     if "voz" in sys.modules:
         voz._log(f"directa · {len(texto)} chars · SIN VOZ ({type(e).__name__})")
     sys.exit(2)
+# Voz al celular (2.3): estás usando Arbrain en el celular (claude_hooks/celular.py). La Mac se calla y el chat de Arbrain
+# en el celular dice la frase al ver esta marca en la salida del comando.
+if getattr(voz, "DESTINO_ULTIMO", "") == "telefono":
+    print("VOZ_EN_TELEFONO: " + " ".join(texto.split()))
+    voz._log(f"directa · {len(texto)} chars → celular")
+    sys.exit(0)
 voz._log(f"directa · {len(texto)} chars → SFlow #{n}")
 
 # Tope de espera según el largo: unas 2,5 palabras por segundo, más margen.

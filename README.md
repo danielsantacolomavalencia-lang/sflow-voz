@@ -39,11 +39,19 @@ Built as a replacement for [Wispr Flow](https://wispr.com) ($15/month). SFlow us
 
 ---
 
-## 🔊 SFlow con voz (2.2)
+## 🔊 SFlow con voz (2.3)
 
 Además de dictar, SFlow **te habla**: lee en voz alta los resúmenes de Claude Code y narra demos en pantalla.
 
-### Novedades 2.2
+### Novedades 2.3: la voz viaja al celular
+
+- Si usas **Arbrain desde el celular** (iPhone o iPad) y tu agente de Arbrain te habla con la voz directa (`decir.py`), la frase **suena en el celular** y la Mac se calla. Gana el aparato que tocaste más reciente (el celular, o el teclado y el mouse de la Mac); si el celular lleva 15 minutos sin tocarse o pasa a segundo plano, vuelve a hablar la Mac.
+- **No hay nada que configurar** en SFlow: solo aplica a los agentes que corren dentro de Arbrain (traen `ARBRAIN_CONFIG_DIR`) y solo si tu Arbrain tiene el modo coche con la voz al celular (guía `MODO-COCHE.md` del fork de Arbrain, sección «La voz que viaja al celular»). Claude Code en tu terminal sigue hablando en la Mac.
+- En el celular suena con tu llave de LemonFox de Arbrain (Ajustes › Voz) o, sin ella, con la voz del celular. Límite de iOS: con el celular bloqueado o Arbrain en segundo plano no hay voz (la respuesta queda escrita).
+- Solo viaja la voz directa (`decir.py`); las líneas 🔊 que lee el gancho al terminar siguen siendo de la Mac.
+- Actualizar: `git pull`, `bash build.sh --install` y `/usr/bin/python3 claude_hooks/instalar.py`.
+
+### Lo de la 2.2
 
 - **Voz directa** (`decir.py`, dentro de la skill `modo-voz`): Claude le manda cada frase a SFlow y espera a que termine de decirla. Es la forma preferida: no depende del gancho de las líneas 🔊 y lo que oyes va junto con lo que ves. Si Claude ya habló directo, el gancho no repite la respuesta (antes podía oírse dos veces).
 - **Skill `modo-voz` al día:** la voz cuenta el trabajo «como un colega» (qué hizo, dónde quedó, qué necesita de ti) sin leer tablas ni código, y entiende la nota «[Modo coche]» del complemento de voz para Arbrain.

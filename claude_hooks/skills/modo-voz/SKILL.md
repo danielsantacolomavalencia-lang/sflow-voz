@@ -40,6 +40,8 @@ no enciende el modo voz para los demás.
   `/usr/bin/python3 -I ~/.claude/skills/modo-voz/decir.py 'frase'`. El script le manda la frase a SFlow
   y **espera a que termine de decirla** antes de devolver el control: lo que se oye y lo que se ve en
   pantalla van juntos. No depende del gancho de las líneas 🔊 (que a veces no ve el texto previo a una acción).
+- **Si la salida dice `VOZ_EN_TELEFONO: …`,** la persona está usando Arbrain en el celular: ahí sonó la frase (la Mac se
+  calla a propósito). Sigue igual; no es un error.
 - **La frase va entre comillas simples**, para que la terminal no toque los signos (`$`, `!`, comillas dobles).
 - **Si hablaste directo, la respuesta NO lleva 🔊.** El gancho de cierre diría ese 🔊 otra vez y se oiría dos
   veces. (El gancho ya no relee una respuesta sin 🔊 cuando hablaste directo.)

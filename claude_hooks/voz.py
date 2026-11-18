@@ -286,8 +286,30 @@ def _voz_de_quien_habla():
         return {}
 
 
+# Voz al celular (2.3): a dónde fue la última frase ("" = esta Mac, "telefono" = el celular). decir.py lo mira.
+DESTINO_ULTIMO = ""
+
+
+def _celular():
+    try:
+        # realpath: decir.py llega por el acceso directo de la carpeta de SFlow; celular.py vive junto al voz.py real.
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        import celular
+        return celular
+    except Exception:
+        return None
+
+
 def _enviar(texto):
-    """Manda una frase a SFlow. Devuelve su número (o None si SFlow es anterior)."""
+    """Manda una frase a SFlow (o la deja para el celular). Devuelve su número (o None si SFlow es anterior o fue al
+    celular)."""
+    global DESTINO_ULTIMO
+    c = _celular()
+    if c and c.en_el_celular():
+        DESTINO_ULTIMO = c.TELEFONO
+        _log("voz al celular · la Mac se calla")
+        return None
+    DESTINO_ULTIMO = ""
     cfg = _cfg()
     req = urllib.request.Request(
         f"http://127.0.0.1:{int(cfg['puerto'])}/voz",
@@ -299,6 +321,8 @@ def _enviar(texto):
 
 
 def _terminado():
+    if DESTINO_ULTIMO == "telefono":
+        return 10 ** 9   # la frase la dice el celular: aquí no hay nada que esperar
     cfg = _cfg()
     req = urllib.request.Request(f"http://127.0.0.1:{int(cfg['puerto'])}/voz/estado",
                                  headers={"X-SFlow-Token": cfg["token"]})
