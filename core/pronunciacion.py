@@ -14,6 +14,8 @@ Se administra con `herramientas/pronunciacion.py` (probar / sumar / quitar / lis
 Reglas: palabra completa (no toca "Groqueta"), sin distinguir mayúsculas, la más
 larga primero ("LemonFox" antes que "Lemon") y en UNA pasada: lo que ya se
 reemplazó no se vuelve a reemplazar.
+Siglas: una clave escrita TODA en mayúsculas ("TI", "IT", "USD") solo cambia
+cuando el texto la trae en mayúsculas — "el área de TI" sí, "para ti" no.
 """
 import json
 import os
@@ -27,6 +29,11 @@ _cache = {"mtime": None, "patron": None, "mapa": {}}
 _lock = threading.Lock()
 
 
+def _es_sigla(clave: str) -> bool:
+    """"TI", "USD": toda en mayúsculas → se busca tal cual, no sin distinguir mayúsculas."""
+    return clave.isupper()
+
+
 def _cargar():
     """(patrón, mapa) al día con el archivo. Si el archivo se rompe, queda el anterior."""
     try:
@@ -38,11 +45,14 @@ def _cargar():
             try:
                 with open(RUTA, encoding="utf-8") as f:
                     datos = json.load(f)
-                mapa = {k.strip().lower(): v for k, v in datos.items()
+                mapa = {(k.strip() if _es_sigla(k.strip()) else k.strip().lower()): v
+                        for k, v in datos.items()
                         if isinstance(v, str) and k.strip() and not k.startswith("_")}
-                claves = sorted(mapa, key=len, reverse=True)
-                patron = (re.compile(r"(?<!\w)(" + "|".join(re.escape(k) for k in claves) + r")(?!\w)",
-                                     re.IGNORECASE) if claves else None)
+                # La más larga primero; a igual largo, la sigla antes que la otra.
+                claves = sorted(mapa, key=lambda k: (-len(k), not _es_sigla(k)))
+                partes = (re.escape(k) if _es_sigla(k) else f"(?i:{re.escape(k)})" for k in claves)
+                patron = (re.compile(r"(?<!\w)(" + "|".join(partes) + r")(?!\w)")
+                          if claves else None)
                 _cache.update(mtime=mtime, patron=patron, mapa=mapa)
             except (OSError, ValueError, AttributeError) as e:
                 print(f"[SFlow] pronunciacion.json no se pudo leer ({e}); sigo con el anterior.")
@@ -55,4 +65,4 @@ def aplicar(texto: str) -> str:
     patron, mapa = _cargar()
     if not patron or not texto:
         return texto
-    return patron.sub(lambda m: mapa.get(m.group(0).lower(), m.group(0)), texto)
+    return patron.sub(lambda m: mapa.get(m.group(0)) or mapa.get(m.group(0).lower(), m.group(0)), texto)

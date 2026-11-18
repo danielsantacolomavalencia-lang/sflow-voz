@@ -149,8 +149,8 @@ app = BUNDLE(
             'SFlow usa AppleScript para pegar texto en otras aplicaciones.',
         'CFBundleDisplayName': 'SFlow',
         'CFBundleName': 'SFlow',
-        'CFBundleVersion': '2.1.0',
-        'CFBundleShortVersionString': '2.1.0',
+        'CFBundleVersion': '2.2.0',
+        'CFBundleShortVersionString': '2.2.0',
         'LSMinimumSystemVersion': '13.0',
         # Sin App Nap: una app de barra "dormida" retrasa sus temporizadores
         # y el dictado se siente lento (ver _sin_app_nap en main.py).

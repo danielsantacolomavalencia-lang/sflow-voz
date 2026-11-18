@@ -39,9 +39,19 @@ Built as a replacement for [Wispr Flow](https://wispr.com) ($15/month). SFlow us
 
 ---
 
-## 🔊 SFlow con voz (2.1) — lo nuevo de esta versión
+## 🔊 SFlow con voz (2.2)
 
-Además de dictar, SFlow ahora **te habla**: lee en voz alta los resúmenes de Claude Code y narra demos en pantalla.
+Además de dictar, SFlow **te habla**: lee en voz alta los resúmenes de Claude Code y narra demos en pantalla.
+
+### Novedades 2.2
+
+- **Voz directa** (`decir.py`, dentro de la skill `modo-voz`): Claude le manda cada frase a SFlow y espera a que termine de decirla. Es la forma preferida: no depende del gancho de las líneas 🔊 y lo que oyes va junto con lo que ves. Si Claude ya habló directo, el gancho no repite la respuesta (antes podía oírse dos veces).
+- **Skill `modo-voz` al día:** la voz cuenta el trabajo «como un colega» (qué hizo, dónde quedó, qué necesita de ti) sin leer tablas ni código, y entiende la nota «[Modo coche]» del complemento de voz para Arbrain.
+- **Voz por frase (opcional):** si quieres distinguir a Claude Code de otro agente que también habla con SFlow, crea `~/Library/Application Support/SFlow/voz_claude_code.json` con `{"voz": "noel"}` (o `"dora"`, `"alex"`). Sin ese archivo, todo usa la voz del menú.
+- **Siglas en el diccionario de pronunciación:** una clave escrita toda en mayúsculas («TI», «IT») solo cambia cuando el texto la trae así («el área de TI» sí, «para ti» no). Palabras nuevas: Copilot, knowledge base, One-pager, Whitepaper.
+- **Arreglo:** pide PyQt6 6.12 o más nuevo; con 6.10 y 6.11, abrir el menú del ícono podía cerrar SFlow en macOS 27. Si ya lo tenías instalado: `source venv/bin/activate && pip install -U -r requirements.txt && bash build.sh --install`.
+
+### Lo de la 2.1
 
 - **Voz que lee** con [LemonFox](https://www.lemonfox.ai) (voces Dora, Alex o Noel; `say` de macOS como respaldo). Volumen, velocidad y voz desde el menú.
 - **Resúmenes de Claude Code en voz**: escribe «modo voz» en Claude Code y cada respuesta cierra con un resumen hablado (líneas que empiezan con 🔊).
@@ -63,12 +73,19 @@ Además de dictar, SFlow ahora **te habla**: lee en voz alta los resúmenes de C
    ```
    La primera vez `build.sh` te pide crear un certificado de firma local llamado **SFlow Dev** (Acceso a Llaveros → Asistente de Certificados → Crear un certificado… → raíz autofirmada, tipo «Firma de código»). Sin él, macOS le quitaría los permisos a la app en cada actualización.
    Si ya tienes **SFlow v3** en Aplicaciones, `--install` no la reemplaza: usa `dist/SFlow.app` desde la carpeta.
-2. **La voz** (opcional, para que te lea): crea una llave en [LemonFox](https://www.lemonfox.ai/apis/keys) y pégala en `~/Library/Application Support/SFlow/.env` como `LEMONFOX_API_KEY=...`. En el menú de SFlow marca «Leer en voz los resúmenes de Claude».
+2. **Tus llaves** (cada quien usa las suyas; nunca las subas a Git): las dos viven en `~/Library/Application Support/SFlow/.env`, una por renglón (mira `.env.example`):
+   ```
+   # para dictar (SFlow te la pide la primera vez que abre)
+   GROQ_API_KEY=tu_llave_de_groq
+   # opcional: para que te lea en voz alta
+   LEMONFOX_API_KEY=tu_llave_de_lemonfox
+   ```
+   La de LemonFox se crea en [lemonfox.ai](https://www.lemonfox.ai/apis/keys). Sin ella, SFlow lee con la voz de macOS. Reinicia SFlow después de cambiar el archivo y, en su menú, marca «Leer en voz los resúmenes de Claude».
 3. **Conectarlo a Claude Code y Arbrain** (instala las skills `modo-voz` y `modo-demo`, los ganchos que leen las líneas 🔊 y los accesos directos que usa Arbrain):
    ```bash
    /usr/bin/python3 claude_hooks/instalar.py
    ```
-   Abre un chat nuevo de Claude Code y escribe **«modo voz»**. Para deshacerlo: `/usr/bin/python3 claude_hooks/instalar.py --quitar`.
+   Abre un chat nuevo de Claude Code y escribe **«modo voz»** (o «con demo» para que narre lo que te muestra). Para apagarlo: «apaga el modo voz». Para deshacerlo: `/usr/bin/python3 claude_hooks/instalar.py --quitar`.
 
 > **Arbrain:** el chat de Arbrain no ejecuta los ganchos de Claude Code; ahí la voz la hace «Voz con SFlow» (Ajustes › Voz), propuesta al repo de Arbrain. Con el paso 3 hecho, Arbrain encuentra SFlow solo (`~/Library/Application Support/SFlow/voz.py`). En Claude Code funciona desde ya.
 

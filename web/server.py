@@ -191,10 +191,14 @@ def voz():
     texto = str(data.get("texto", "")).strip()[:3000]
     if not texto:
         return jsonify(ok=False, error="sin texto"), 400
+    # Voz opcional por frase (voz_claude_code.json); lo que no sea una voz de SFlow se ignora.
+    voz_frase = str(data.get("voz", "")).strip().lower()
+    if voz_frase not in ("dora", "alex", "noel"):
+        voz_frase = ""
     with _ids_lock:
         vid = next(_ids)
         _voz["ultimo"] = vid
-    _voz["decir"](vid, texto)
+    _voz["decir"](vid, texto, voz_frase)
     return jsonify(ok=True, id=vid)
 
 

@@ -411,7 +411,7 @@ class SFlowApp(QObject):
     pegado = pyqtSignal(bool)            # terminó el pegado (hilo "sistema")
     cargador = pyqtSignal(bool)          # ¿la Mac está conectada? (hilo "sistema", cada 30 s)
     texto_para_leer = pyqtSignal(str)    # selección capturada para leer en voz alta
-    voz_de_claude = pyqtSignal(int, str)  # (id, frase 🔊) que manda el gancho de Claude Code (hilo de Flask)
+    voz_de_claude = pyqtSignal(int, str, str)  # (id, frase 🔊, voz de la frase o "") que manda el gancho de Claude Code (hilo de Flask)
     # TTS worker thread → main thread (Qt objects must not be touched from workers)
     lemonfox_chars = pyqtSignal(int)
     tts_fallback = pyqtSignal(str)
@@ -480,7 +480,7 @@ class SFlowApp(QObject):
         # Resúmenes en voz de Claude Code: en fila, y solo cuando SFlow está libre
         # (no mientras dictas ni mientras ya está hablando).
         self.voz_claude = bool(load_settings().get("voz_claude", True))
-        self._voz_fila: list[tuple[int, str]] = []
+        self._voz_fila: list[tuple[int, str, str]] = []
         self._voz_actual: int | None = None   # id de la frase que suena ahora
         self._voz_terminado = 0               # frases 1..n ya dichas o descartadas (lo lee /voz/estado)
         self._voz_timer = QTimer()
@@ -627,7 +627,7 @@ class SFlowApp(QObject):
                        "capturar selección")
 
     @pyqtSlot(str)
-    def _on_texto_para_leer(self, text: str):
+    def _on_texto_para_leer(self, text: str, voz: str | None = None):
         text = text.strip()
         if not text:
             msg = "Selecciona o copia un texto y toca dos veces ⌘ derecho."
@@ -636,7 +636,7 @@ class SFlowApp(QObject):
                 self.tray.showMessage("SFlow", msg, QSystemTrayIcon.MessageIcon.Information, 4000)
             return
 
-        if self.speaker.speak(text):
+        if self.speaker.speak(text, voz):
             # 'fetching' → spinner; the poll flips to SPEAKING when audio starts
             self.pill.set_state(PillWidget.STATE_PROCESSING)
             self._speak_timer.start()
@@ -656,14 +656,14 @@ class SFlowApp(QObject):
 
     # -- resúmenes en voz de Claude Code (claude_hooks/voz.py → /voz) ----------
 
-    @pyqtSlot(int, str)
-    def _on_voz_de_claude(self, vid: int, text: str):
+    @pyqtSlot(int, str, str)
+    def _on_voz_de_claude(self, vid: int, text: str, voz: str = ""):
         if not self.voz_claude:
             print(f"[SFlow] voz de Claude · {len(text)} chars · silenciada desde el menú")
             self._voz_terminado = max(self._voz_terminado, vid)   # nadie debe esperarla
             return
         print(f"[SFlow] voz de Claude · {len(text)} chars")
-        self._voz_fila.append((vid, text))
+        self._voz_fila.append((vid, text, voz))
         self._hablar_siguiente()
         if self._voz_fila:
             self._voz_timer.start()
@@ -678,15 +678,15 @@ class SFlowApp(QObject):
                                            PillWidget.STATE_DONE, PillWidget.STATE_ERROR))
         if ocupado:
             return
-        vid, text = self._voz_fila.pop(0)
+        vid, text, voz = self._voz_fila.pop(0)
         self._voz_actual = vid
-        self._on_texto_para_leer(text)
+        self._on_texto_para_leer(text, voz or None)
         if not self._voz_fila:
             self._voz_timer.stop()
 
     def _voz_descartar(self):
         """Vacía la fila: lo que venía (y lo que sonaba) cuenta como terminado."""
-        ids = [vid for vid, _ in self._voz_fila] + ([self._voz_actual] if self._voz_actual else [])
+        ids = [f[0] for f in self._voz_fila] + ([self._voz_actual] if self._voz_actual else [])
         self._voz_fila.clear()
         self._voz_actual = None
         if ids:

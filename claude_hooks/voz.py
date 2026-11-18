@@ -24,6 +24,8 @@ Reglas de lectura:
   · Fuera del modo demo, Stop dice solo el último bloque (el resumen), como siempre.
   · Sin 🔊 pero la persona pidió voz ("modo voz", "léeme", "en voz"...) y la respuesta es
     corta: se lee completa (chats abiertos antes de la regla no saben poner la marca).
+    Salvo que esa respuesta ya haya hablado por la voz directa (skill modo-voz →
+    decir.py): ya dijo su resumen, leer la respuesta sería oírla dos veces.
 
 Diagnóstico sin hablar: `python3 voz.py --probar <transcript.jsonl> [--demo]`.
 Python 3.9 del sistema (/usr/bin/python3), solo biblioteca estándar. Una línea por
@@ -199,6 +201,20 @@ def limpiar(texto, desde_marca=True):
     return _limpiar_texto(texto)
 
 
+def _hablo_directo(entradas):
+    """¿La respuesta en curso ya habló por la voz directa (skill modo-voz, decir.py)?"""
+    for e in reversed(entradas):
+        if _es_pregunta_de_la_persona(e):
+            return False
+        if e.get("type") != "assistant" or e.get("isSidechain"):
+            continue
+        for b in (e.get("message") or {}).get("content") or []:
+            if (isinstance(b, dict) and b.get("type") == "tool_use"
+                    and "modo-voz/decir.py" in str((b.get("input") or {}).get("command", ""))):
+                return True
+    return False
+
+
 def que_decir(entradas, demo=False, dichos=frozenset(), respaldo=True):
     """[(clave, texto listo para oírse)] pendientes de decir, en orden.
 
@@ -211,8 +227,8 @@ def que_decir(entradas, demo=False, dichos=frozenset(), respaldo=True):
         elegidos = todos if demo else todos[-1:]
         return [(k, _limpiar_texto(b[len(MARCA):])) for k, b in elegidos
                 if k not in dichos and _limpiar_texto(b[len(MARCA):])]
-    # Sin 🔊: solo si pidió voz y la respuesta ya terminó y es corta.
-    if respaldo and textos and _PIDIO_VOZ.search(pregunta):
+    # Sin 🔊: solo si pidió voz, la respuesta ya terminó, es corta y no habló directo.
+    if respaldo and textos and _PIDIO_VOZ.search(pregunta) and not _hablo_directo(entradas):
         uuid, texto, solo_texto = textos[-1]
         clave = f"{uuid}:todo"
         if solo_texto and len(texto) <= _MAX_SIN_MARCA and clave not in dichos:
@@ -254,12 +270,28 @@ def _cfg():
         return json.load(f)
 
 
+def _voz_de_quien_habla():
+    """Voz propia para Claude Code (opcional), para distinguirla de otros agentes que también hablan con SFlow.
+
+    `voz_claude_code.json` en la carpeta de SFlow, con {"voz": "noel"} (o "dora" / "alex"), la enciende. Un agente que
+    corre dentro de Arbrain (trae ARBRAIN_HOME en su entorno) sigue con la voz del menú. Un SFlow anterior ignora el campo.
+    """
+    if os.environ.get("ARBRAIN_HOME"):
+        return {}
+    try:
+        with open(os.path.join(APP, "voz_claude_code.json"), encoding="utf-8") as f:
+            v = str(json.load(f).get("voz", "")).strip().lower()
+        return {"voz": v} if v in ("dora", "alex", "noel") else {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
 def _enviar(texto):
     """Manda una frase a SFlow. Devuelve su número (o None si SFlow es anterior)."""
     cfg = _cfg()
     req = urllib.request.Request(
         f"http://127.0.0.1:{int(cfg['puerto'])}/voz",
-        data=json.dumps({"texto": texto}).encode("utf-8"),
+        data=json.dumps({"texto": texto, **_voz_de_quien_habla()}).encode("utf-8"),
         headers={"Content-Type": "application/json", "X-SFlow-Token": cfg["token"]},
         method="POST")
     with urllib.request.urlopen(req, timeout=3) as r:

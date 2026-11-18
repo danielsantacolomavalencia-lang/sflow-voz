@@ -7,7 +7,7 @@
 Qué hace:
   0. Deja accesos directos estables en ~/Library/Application Support/SFlow/ (voz.py y modo_demo.py apuntan a
      ESTA carpeta). Ahí los buscan las skills y Arbrain («Voz con SFlow»), estés donde estés clonado.
-  1. Copia las skills `modo-voz` y `modo-demo` a ~/.claude/skills/.
+  1. Copia las skills `modo-voz` (con su voz directa, decir.py) y `modo-demo` a ~/.claude/skills/.
   2. Agrega a ~/.claude/settings.json dos ganchos (antes guarda una copia `settings.json.antes-de-sflow`):
        · Stop       → claude_hooks/voz.py       (el resumen 🔊 al terminar cada respuesta)
        · PreToolUse → claude_hooks/voz.py pre   (solo con el modo demo encendido: cuesta milisegundos apagado)
@@ -57,10 +57,10 @@ def main():
             shutil.rmtree(destino, ignore_errors=True)
             continue
         os.makedirs(destino, exist_ok=True)
-        with open(os.path.join(AQUI, "skills", nombre, "SKILL.md"), encoding="utf-8") as f:
-            texto = f.read()
-        with open(os.path.join(destino, "SKILL.md"), "w", encoding="utf-8") as f:
-            f.write(texto)
+        origen = os.path.join(AQUI, "skills", nombre)
+        for archivo in os.listdir(origen):   # SKILL.md y, en modo-voz, decir.py (la voz directa)
+            if archivo.endswith((".md", ".py")):
+                shutil.copy2(os.path.join(origen, archivo), os.path.join(destino, archivo))
 
     ruta = os.path.join(CLAUDE, "settings.json")
     ajustes = {}

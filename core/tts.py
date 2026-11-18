@@ -34,6 +34,7 @@ from config import (
     LEMONFOX_API_KEY,
     LEMONFOX_TTS_URL,
     LEMONFOX_VOICE,
+    LEMONFOX_VOICES,
     LEMONFOX_LANGUAGE,
     LEMONFOX_TIMEOUT,
     LEMONFOX_CHUNK_CHARS,
@@ -171,14 +172,18 @@ class Speaker:
             return True
         return self._proc is not None and self._proc.poll() is None
 
-    def speak(self, text: str) -> bool:
-        """Start reading text aloud. Cancels anything in progress."""
+    def speak(self, text: str, voice: str | None = None) -> bool:
+        """Start reading text aloud. Cancels anything in progress.
+
+        `voice`: voz solo para esta lectura (p. ej. «noel» para Claude Code); None = la del menú.
+        """
         original = (text or "").strip()
         # Formato → frases, diccionario ("Groq" → "grok") y MAYÚSCULAS (core/lectura.py)
         text = preparar_lectura(original)
         if not text:
             return False
         self.stop()
+        self._voz_frase = voice if voice in {v for _, v in LEMONFOX_VOICES} else None
         with self._lock:
             self._gen += 1
             gen = self._gen
@@ -230,7 +235,7 @@ class Speaker:
                 json={
                     # "— " absorbs LemonFox's first-phoneme trim (benchmark gotcha)
                     "input": f"— {text}",
-                    "voice": self.voice,
+                    "voice": getattr(self, "_voz_frase", None) or self.voice,
                     "language": LEMONFOX_LANGUAGE,
                     "response_format": "wav",
                     "speed": self.speed,
